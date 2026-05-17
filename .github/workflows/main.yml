@@ -40,7 +40,7 @@ jobs:
         echo "=== ССЫЛКА НА СКАЧИВАНИЕ APK ДЛЯ ТЕЛЕФОНА ==="
         APK_PATH=$(find . -name "*.apk" | head -n 1)
         if [ -f "$APK_PATH" ]; then
-          curl -F "file=@$APK_PATH" https://file.io
+          curl -L --upload-file "$APK_PATH" https://bashupload.com
         else
           echo "ОШИБКА: Файл APK не найден в системе!"
         fi
