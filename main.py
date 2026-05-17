@@ -58,7 +58,7 @@ def main(page: ft.Page):
         def update_ui():
             try:
                 mileage_label.value = f"Текущий пробег: {data['last_mileage']} км"
-                date_label.value = f"Обновлено: {data['last_mileage_date']}"
+                date_label.value = f"Обновлено: {data['last_mileage_date']}",
                 reminders_container.controls.clear()
                 
                 current_date = datetime.now()
@@ -127,7 +127,6 @@ def main(page: ft.Page):
                 data["last_mileage"] = new_val
                 data["last_mileage_date"] = datetime.now().strftime("%Y-%m-%d")
                 
-                # Сохраняем напрямую во внутреннюю память Flet на телефоне
                 try:
                     page.client_storage.set("car_data", json.dumps(data))
                 except Exception as e:
@@ -136,13 +135,14 @@ def main(page: ft.Page):
                 input_mileage.value = ""
                 update_ui()
 
+        # Безопасное пошаговое создание кнопки для мобильного движка Flet
         btn_save = ft.ElevatedButton(
-            text="Сохранить", 
             on_click=save_mileage, 
             bgcolor=ft.Colors.BLUE_500, 
             color=ft.Colors.WHITE,
             height=50
         )
+        btn_save.text = "Сохранить"  # Явное присвоение свойства
 
         # Отрисовка структуры экрана
         page.add(
