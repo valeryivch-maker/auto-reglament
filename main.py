@@ -2,6 +2,7 @@ import json
 from datetime import datetime
 import flet as ft
 
+# Базовые данные приложения
 data = {
     "last_mileage": 195789,
     "last_mileage_date": "2026-01-16",
@@ -20,8 +21,9 @@ def main(page: ft.Page):
     page.scroll = ft.ScrollMode.AUTO
     page.padding = 20
 
-    mileage_label = ft.Text(value="", size=22, weight=ft.FontWeight.BOLD)
-    date_label = ft.Text(value="", size=14, color=ft.Colors.GREY_500)
+    # Текстовые метки
+    mileage_label = ft.Text(value=f"Текущий пробег: {data['last_mileage']} км", size=22, weight=ft.FontWeight.BOLD)
+    date_label = ft.Text(value=f"Обновлено: {data['last_mileage_date']}", size=14, color=ft.Colors.GREY_500)
     
     input_mileage = ft.TextField(
         hint_text="Новый пробег", 
@@ -118,5 +120,5 @@ def main(page: ft.Page):
     
     update_ui()
 
-# Запуск в режиме полноценного мобильного приложения
-ft.app(target=main, view=ft.AppView.FLET_APP)
+# Запуск приложения в мобильном представлении
+ft.app(target=main)
