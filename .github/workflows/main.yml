@@ -38,5 +38,10 @@ jobs:
       run: |
         echo "y" | flet build apk
         echo "=== ССЫЛКА НА СКАЧИВАНИЕ APK ДЛЯ ТЕЛЕФОНА ==="
-        curl -F "file=@build/apk/app-release.apk" https://file.io
+        APK_PATH=$(find . -name "*.apk" | head -n 1)
+        if [ -f "$APK_PATH" ]; then
+          curl -F "file=@$APK_PATH" https://file.io
+        else
+          echo "ОШИБКА: Файл APK не найден в системе!"
+        fi
         echo "============================================="
