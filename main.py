@@ -2,7 +2,8 @@ import json
 from datetime import datetime
 import flet as ft
 
-DEFAULT_DATA = {
+# Полноценная база данных внутри оперативной памяти (гарантия старта без черного экрана)
+data = {
     "last_mileage": 195789,
     "last_mileage_date": "2026-01-16",
     "avg_daily_km": 15.0,
@@ -20,32 +21,20 @@ def main(page: ft.Page):
     page.scroll = ft.ScrollMode.AUTO
     page.padding = 20
 
-    def load_data():
-        try:
-            stored_raw = page.client_storage.get("car_data")
-            if stored_raw:
-                return json.loads(stored_raw)
-        except:
-            pass
-        return DEFAULT_DATA.copy()
-
-    data = load_data()
-
-    # Базовые текстовые поля
-    mileage_label = ft.Text(value=f"Текущий пробег: {data['last_mileage']} км", size=22, weight=ft.FontWeight.BOLD)
-    date_label = ft.Text(value=f"Обновлено: {data['last_mileage_date']}", size=14, color=ft.Colors.GREY_500)
+    # Создание визуальных элементов
+    mileage_label = ft.Text(value="", size=22, weight=ft.FontWeight.BOLD)
+    date_label = ft.Text(value="", size=14, color=ft.Colors.GREY_500)
     
-    # Поле ввода текста
     input_mileage = ft.TextField(
         hint_text="Новый пробег", 
         keyboard_type=ft.KeyboardType.NUMBER, 
         expand=True
     )
     
-    # Контейнер для карточек задач
     reminders_container = ft.Column(spacing=12, horizontal_alignment=ft.CrossAxisAlignment.STRETCH)
 
     def update_ui():
+        # Динамическое обновление текстов на экране
         mileage_label.value = f"Текущий пробег: {data['last_mileage']} км"
         date_label.value = f"Обновлено: {data['last_mileage_date']}"
         reminders_container.controls.clear()
@@ -68,6 +57,7 @@ def main(page: ft.Page):
 
             days_to_show = int(remaining_days)
 
+            # Цветовая схема блоков
             if days_to_show <= 0:
                 bg_color = ft.Colors.RED_900
                 prefix = "[ СРОЧНО ] "
@@ -113,21 +103,16 @@ def main(page: ft.Page):
             data["last_mileage"] = new_val
             data["last_mileage_date"] = datetime.now().strftime("%Y-%m-%d")
             
-            try:
-                page.client_storage.set("car_data", json.dumps(data))
-            except:
-                pass
-                
             input_mileage.value = ""
             update_ui()
 
-    # Простая стандартная кнопка
     btn_save = ft.ElevatedButton(
         text="Сохранить",
         on_click=save_mileage,
         height=50
     )
 
+    # Формируем сетку интерфейса
     page.add(
         mileage_label,
         date_label,
@@ -136,6 +121,8 @@ def main(page: ft.Page):
         reminders_container
     )
     
+    # Сразу запускаем отрисовку данных
     update_ui()
 
+# Официальный запуск приложения
 ft.app(target=main)
