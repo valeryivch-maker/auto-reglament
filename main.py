@@ -2,7 +2,6 @@ import json
 from datetime import datetime
 import flet as ft
 
-# Полноценная база данных внутри оперативной памяти (гарантия старта без черного экрана)
 data = {
     "last_mileage": 195789,
     "last_mileage_date": "2026-01-16",
@@ -21,7 +20,6 @@ def main(page: ft.Page):
     page.scroll = ft.ScrollMode.AUTO
     page.padding = 20
 
-    # Создание визуальных элементов
     mileage_label = ft.Text(value="", size=22, weight=ft.FontWeight.BOLD)
     date_label = ft.Text(value="", size=14, color=ft.Colors.GREY_500)
     
@@ -34,7 +32,6 @@ def main(page: ft.Page):
     reminders_container = ft.Column(spacing=12, horizontal_alignment=ft.CrossAxisAlignment.STRETCH)
 
     def update_ui():
-        # Динамическое обновление текстов на экране
         mileage_label.value = f"Текущий пробег: {data['last_mileage']} км"
         date_label.value = f"Обновлено: {data['last_mileage_date']}"
         reminders_container.controls.clear()
@@ -57,7 +54,6 @@ def main(page: ft.Page):
 
             days_to_show = int(remaining_days)
 
-            # Цветовая схема блоков
             if days_to_show <= 0:
                 bg_color = ft.Colors.RED_900
                 prefix = "[ СРОЧНО ] "
@@ -112,7 +108,6 @@ def main(page: ft.Page):
         height=50
     )
 
-    # Формируем сетку интерфейса
     page.add(
         mileage_label,
         date_label,
@@ -121,8 +116,7 @@ def main(page: ft.Page):
         reminders_container
     )
     
-    # Сразу запускаем отрисовку данных
     update_ui()
 
-# Официальный запуск приложения
-ft.app(target=main)
+# Запуск в режиме полноценного мобильного приложения
+ft.app(target=main, view=ft.AppView.FLET_APP)
