@@ -3,7 +3,9 @@ import json
 from datetime import datetime
 import flet as ft
 
-DATA_FILE = "car_service_data.json"
+# Автоматически определяем безопасную папку для сохранения данных на Android и ПК
+STORAGE_DIR = os.getenv("FLET_APP_STORAGE_DATA_DIR", os.getcwd())
+DATA_FILE = os.path.join(STORAGE_DIR, "car_service_data.json")
 
 DEFAULT_DATA = {
     "last_mileage": 195789,
@@ -23,17 +25,17 @@ def main(page: ft.Page):
     page.scroll = ft.ScrollMode.AUTO
     page.padding = 20
 
-    # Загрузка данных из JSON
-    if os.path.exists(DATA_FILE):
-        try:
+    # Безопасная загрузка данных с перестраховкой от сбоев
+    try:
+        if os.path.exists(DATA_FILE):
             with open(DATA_FILE, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-        except:
-            data = DEFAULT_DATA
-    else:
-        data = DEFAULT_DATA
+        else:
+            data = DEFAULT_DATA.copy()
+    except Exception:
+        data = DEFAULT_DATA.copy()
 
-    # Инициализация текстовых меток интерфейса
+    # Инициализация текстовых элементов
     mileage_label = ft.Text(
         value=f"Текущий пробег: {data['last_mileage']} км", 
         size=22, 
@@ -45,7 +47,6 @@ def main(page: ft.Page):
         color=ft.Colors.GREY_500
     )
     
-    # Поле ввода (на телефоне сразу откроет цифровую клавиатуру)
     input_mileage = ft.TextField(
         hint_text="Новый пробег", 
         keyboard_type=ft.KeyboardType.NUMBER, 
@@ -53,11 +54,9 @@ def main(page: ft.Page):
         border_color=ft.Colors.BLUE_900
     )
     
-    # Контейнер для карточек регламента
     reminders_container = ft.Column(spacing=12, horizontal_alignment=ft.CrossAxisAlignment.STRETCH)
 
     def update_ui():
-        """Обновление интерфейса и пересчет сроков ТО"""
         mileage_label.value = f"Текущий пробег: {data['last_mileage']} км"
         date_label.value = f"Обновлено: {data['last_mileage_date']}"
         reminders_container.controls.clear()
@@ -69,12 +68,10 @@ def main(page: ft.Page):
         for task, info in data["schedule"].items():
             remaining_days = None
             
-            # Расчет дней по километражу
             if info["target_km"]:
                 km_left = info["target_km"] - current_km
                 remaining_days = km_left / avg_km if avg_km > 0 else 0
             
-            # Расчет дней по критической дате (если она ближе, чем по километрам)
             if info["target_date"]:
                 days_by_date = (datetime.strptime(info["target_date"], "%Y-%m-%d") - current_date).days
                 if remaining_days is None or days_by_date < remaining_days:
@@ -82,18 +79,16 @@ def main(page: ft.Page):
 
             days_to_show = int(remaining_days)
 
-            # Определение уровня опасности и цвета плашки
             if days_to_show <= 0:
-                bg_color = ft.Colors.RED_900  # Срочно
+                bg_color = ft.Colors.RED_900
                 prefix = "[ СРОЧНО ] "
             elif days_to_show <= 14:
-                bg_color = ft.Colors.ORANGE_800  # Внимание
+                bg_color = ft.Colors.ORANGE_800
                 prefix = "[ ! ] "
             else:
-                bg_color = ft.Colors.BLUE_950  # Всё в порядке
+                bg_color = ft.Colors.BLUE_950
                 prefix = "[ OK ] "
 
-            # Добавление красивой карточки в список
             reminders_container.controls.add(
                 ft.Container(
                     content=ft.Text(
@@ -108,34 +103,38 @@ def main(page: ft.Page):
                     alignment=ft.alignment.center
                 )
             )
-        page.update()
+        try:
+            page.update()
+        except:
+            pass
 
     def save_mileage(e):
-        """Обработка сохранения нового пробега и пересчет среднего за день"""
         if not input_mileage.value: 
             return
         
         try:
             new_val = int(input_mileage.value)
         except ValueError:
-            return  # Защита от ввода не-чисел
+            return
             
         if new_val >= data["last_mileage"]:
             last_date = datetime.strptime(data["last_mileage_date"], "%Y-%m-%d")
             days_passed = max(1, (datetime.now() - last_date).days)
             km_driven = new_val - data["last_mileage"]
             
-            # Формула скользящего среднего пробега из вашего Kivy-кода
             data["avg_daily_km"] = round((data["avg_daily_km"] + (km_driven / days_passed)) / 2, 2)
             if data["avg_daily_km"] <= 0:
-                data["avg_daily_km"] = 1.0  # Защита от деления на ноль в будущем
+                data["avg_daily_km"] = 1.0
                 
             data["last_mileage"] = new_val
             data["last_mileage_date"] = datetime.now().strftime("%Y-%m-%d")
             
-            # Сохранение изменений в файл
-            with open(DATA_FILE, 'w', encoding='utf-8') as f:
-                json.dump(data, f, ensure_ascii=False, indent=4)
+            # Безопасная запись JSON
+            try:
+                with open(DATA_FILE, 'w', encoding='utf-8') as f:
+                    json.dump(data, f, ensure_ascii=False, indent=4)
+            except Exception:
+                pass
                 
             input_mileage.value = ""
             update_ui()
@@ -148,7 +147,6 @@ def main(page: ft.Page):
         height=50
     )
 
-    # Отрисовка структуры экрана
     page.add(
         mileage_label,
         date_label,
@@ -159,8 +157,6 @@ def main(page: ft.Page):
         reminders_container
     )
     
-    # Первичный запуск отрисовки
     update_ui()
 
-# Запуск приложения внутри Flet-окружения
 ft.app(target=main)
