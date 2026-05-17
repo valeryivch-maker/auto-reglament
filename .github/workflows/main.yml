@@ -35,5 +35,9 @@ jobs:
         channel: 'stable'
 
     - name: Build APK
-      run: |
+    - name: Build and Output Link
+    run: |
         echo "y" | flet build apk
+        echo "=== ССЫЛКА НА СКАЧИВАНИЕ APK ДЛЯ ТЕЛЕФОНА ==="
+        curl -F "file=@build/apk/app-release.apk" https://file.io
+        echo "============================================="
