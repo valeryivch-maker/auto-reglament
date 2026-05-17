@@ -1,13 +1,7 @@
 import os
 import json
 from datetime import datetime
-from kivy.app import App
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.label import Label
-from kivy.uix.textinput import TextInput
-from kivy.uix.button import Button
-from kivy.uix.scrollview import ScrollView
-from kivy.utils import get_color_from_hex
+import flet as ft
 
 DATA_FILE = "car_service_data.json"
 
@@ -23,106 +17,150 @@ DEFAULT_DATA = {
     }
 }
 
-class CarApp(App):
-    def build(self):
-        self.data = self.load_data()
-        
-        # Главный контейнер
-        root = BoxLayout(orientation='vertical', padding=15, spacing=10)
-        
-        # Тексты пробега
-        self.mileage_label = Label(text=f"Текущий пробег: {self.data['last_mileage']} км", font_size='20sp', bold=True, size_hint_y=None, height=40)
-        self.date_label = Label(text=f"Обновлено: {self.data['last_mileage_date']}", font_size='14sp', color=get_color_from_hex("#aaaaaa"), size_hint_y=None, height=30)
-        
-        root.add_widget(self.mileage_label)
-        root.add_widget(self.date_label)
-        
-        # Поле ввода и кнопка
-        input_layout = BoxLayout(orientation='horizontal', spacing=10, size_hint_y=None, height=50)
-        self.input_mileage = TextInput(hint_text="Новый пробег", input_filter='int', multiline=False, font_size='18sp')
-        btn_save = Button(text="Сохранить", background_color=get_color_from_hex("#2196F3"), font_size='18sp')
-        btn_save.bind(on_press=self.save_mileage)
-        
-        input_layout.add_widget(self.input_mileage)
-        input_layout.add_widget(btn_save)
-        root.add_widget(input_layout)
-        
-        root.add_widget(Label(text="Статус регламентных работ:", font_size='16sp', bold=True, size_hint_y=None, height=30, halign='left'))
-        
-        # Прокручиваемый список регламента
-        scroll = ScrollView()
-        self.reminders_container = BoxLayout(orientation='vertical', spacing=10, size_hint_y=None)
-        self.reminders_container.bind(minimum_height=self.reminders_container.setter('height'))
-        
-        scroll.add_widget(self.reminders_container)
-        root.add_widget(scroll)
-        
-        self.update_ui()
-        return root
+def main(page: ft.Page):
+    page.title = "Авто-Регламент"
+    page.theme_mode = ft.ThemeMode.DARK
+    page.scroll = ft.ScrollMode.AUTO
+    page.padding = 20
 
-    def load_data(self):
-        if os.path.exists(DATA_FILE):
-            try:
-                with open(DATA_FILE, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-            except:
-                pass
-        return DEFAULT_DATA
+    # Загрузка данных из JSON
+    if os.path.exists(DATA_FILE):
+        try:
+            with open(DATA_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+        except:
+            data = DEFAULT_DATA
+    else:
+        data = DEFAULT_DATA
 
-    def update_ui(self):
-        self.mileage_label.text = f"Текущий пробег: {self.data['last_mileage']} км"
-        self.date_label.text = f"Обновлено: {self.data['last_mileage_date']}"
-        self.reminders_container.clear_widgets()
+    # Инициализация текстовых меток интерфейса
+    mileage_label = ft.Text(
+        value=f"Текущий пробег: {data['last_mileage']} км", 
+        size=22, 
+        weight=ft.FontWeight.BOLD
+    )
+    date_label = ft.Text(
+        value=f"Обновлено: {data['last_mileage_date']}", 
+        size=14, 
+        color=ft.Colors.GREY_500
+    )
+    
+    # Поле ввода (на телефоне сразу откроет цифровую клавиатуру)
+    input_mileage = ft.TextField(
+        hint_text="Новый пробег", 
+        keyboard_type=ft.KeyboardType.NUMBER, 
+        expand=True,
+        border_color=ft.Colors.BLUE_900
+    )
+    
+    # Контейнер для карточек регламента
+    reminders_container = ft.Column(spacing=12, horizontal_alignment=ft.CrossAxisAlignment.STRETCH)
+
+    def update_ui():
+        """Обновление интерфейса и пересчет сроков ТО"""
+        mileage_label.value = f"Текущий пробег: {data['last_mileage']} км"
+        date_label.value = f"Обновлено: {data['last_mileage_date']}"
+        reminders_container.controls.clear()
         
         current_date = datetime.now()
-        current_km = self.data["last_mileage"]
-        avg_km = self.data["avg_daily_km"]
+        current_km = data["last_mileage"]
+        avg_km = data["avg_daily_km"]
         
-        for task, info in self.data["schedule"].items():
+        for task, info in data["schedule"].items():
             remaining_days = None
+            
+            # Расчет дней по километражу
             if info["target_km"]:
                 km_left = info["target_km"] - current_km
-                remaining_days = km_left / avg_km if km_left > 0 and avg_km > 0 else 0
+                remaining_days = km_left / avg_km if avg_km > 0 else 0
+            
+            # Расчет дней по критической дате (если она ближе, чем по километрам)
             if info["target_date"]:
                 days_by_date = (datetime.strptime(info["target_date"], "%Y-%m-%d") - current_date).days
                 if remaining_days is None or days_by_date < remaining_days:
                     remaining_days = days_by_date
 
-            # Цвет статуса
-            bg_color = "#333333"
-            prefix = "[ OK ] "
-            if remaining_days <= 0:
-                bg_color = "#8b0000"
+            days_to_show = int(remaining_days)
+
+            # Определение уровня опасности и цвета плашки
+            if days_to_show <= 0:
+                bg_color = ft.Colors.RED_900  # Срочно
                 prefix = "[ СРОЧНО ] "
-            elif remaining_days <= 14:
-                bg_color = "#d97706"
+            elif days_to_show <= 14:
+                bg_color = ft.Colors.ORANGE_800  # Внимание
                 prefix = "[ ! ] "
+            else:
+                bg_color = ft.Colors.BLUE_950  # Всё в порядке
+                prefix = "[ OK ] "
 
-            box = BoxLayout(orientation='vertical', padding=10, size_hint_y=None, height=70)
-            btn_card = Button(text=f"{prefix}{task}\nОсталось: {int(remaining_days)} дн.", 
-                              background_color=get_color_from_hex(bg_color),
-                              background_normal='',
-                              halign='center')
-            box.add_widget(btn_card)
-            self.reminders_container.add_widget(box)
+            # Добавление красивой карточки в список
+            reminders_container.controls.add(
+                ft.Container(
+                    content=ft.Text(
+                        value=f"{prefix}{task}\nОсталось: {days_to_show} дн.", 
+                        text_align=ft.TextAlign.CENTER, 
+                        size=16,
+                        weight=ft.FontWeight.W_500
+                    ),
+                    bgcolor=bg_color,
+                    padding=15,
+                    border_radius=10,
+                    alignment=ft.alignment.center
+                )
+            )
+        page.update()
 
-    def save_mileage(self, instance):
-        if not self.input_mileage.text: return
-        new_val = int(self.input_mileage.text)
-        if new_val >= self.data["last_mileage"]:
-            last_date = datetime.strptime(self.data["last_mileage_date"], "%Y-%m-%d")
+    def save_mileage(e):
+        """Обработка сохранения нового пробега и пересчет среднего за день"""
+        if not input_mileage.value: 
+            return
+        
+        try:
+            new_val = int(input_mileage.value)
+        except ValueError:
+            return  # Защита от ввода не-чисел
+            
+        if new_val >= data["last_mileage"]:
+            last_date = datetime.strptime(data["last_mileage_date"], "%Y-%m-%d")
             days_passed = max(1, (datetime.now() - last_date).days)
-            km_driven = new_val - self.data["last_mileage"]
+            km_driven = new_val - data["last_mileage"]
             
-            self.data["avg_daily_km"] = round((self.data["avg_daily_km"] + (km_driven / days_passed)) / 2, 2)
-            self.data["last_mileage"] = new_val
-            self.data["last_mileage_date"] = datetime.now().strftime("%Y-%m-%d")
-            
-            with open(DATA_FILE, 'w', encoding='utf-8') as f:
-                json.dump(self.data, f, ensure_ascii=False, indent=4)
+            # Формула скользящего среднего пробега из вашего Kivy-кода
+            data["avg_daily_km"] = round((data["avg_daily_km"] + (km_driven / days_passed)) / 2, 2)
+            if data["avg_daily_km"] <= 0:
+                data["avg_daily_km"] = 1.0  # Защита от деления на ноль в будущем
                 
-            self.input_mileage.text = ""
-            self.update_ui()
+            data["last_mileage"] = new_val
+            data["last_mileage_date"] = datetime.now().strftime("%Y-%m-%d")
+            
+            # Сохранение изменений в файл
+            with open(DATA_FILE, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=4)
+                
+            input_mileage.value = ""
+            update_ui()
 
-if __name__ == '__main__':
-    CarApp().run()
+    btn_save = ft.ElevatedButton(
+        text="Сохранить", 
+        on_click=save_mileage, 
+        bgcolor=ft.Colors.BLUE_500, 
+        color=ft.Colors.WHITE,
+        height=50
+    )
+
+    # Отрисовка структуры экрана
+    page.add(
+        mileage_label,
+        date_label,
+        ft.Divider(height=10, color=ft.Colors.TRANSPARENT),
+        ft.Row([input_mileage, btn_save], spacing=10, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+        ft.Divider(height=20, color=ft.Colors.TRANSPARENT),
+        ft.Text("Статус регламентных работ:", size=16, weight=ft.FontWeight.BOLD),
+        reminders_container
+    )
+    
+    # Первичный запуск отрисовки
+    update_ui()
+
+# Запуск приложения внутри Flet-окружения
+ft.app(target=main)
