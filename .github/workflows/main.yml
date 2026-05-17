@@ -34,14 +34,13 @@ jobs:
         flutter-version: '3.22.0'
         channel: 'stable'
 
-    - name: Build APK and Get Link
+    - name: Build APK
       run: |
         echo "y" | flet build apk
-        echo "=== ССЫЛКА НА СКАЧИВАНИЕ APK ДЛЯ ТЕЛЕФОНА ==="
-        APK_PATH=$(find . -name "*.apk" | head -n 1)
-        if [ -f "$APK_PATH" ]; then
-          curl -L --upload-file "$APK_PATH" https://bashupload.com
-        else
-          echo "ОШИБКА: Файл APK не найден в системе!"
-        fi
-        echo "============================================="
+
+    - name: Upload APK to Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: flet-app-apk
+        path: build/apk/*.apk
+        if-no-files-found: error
