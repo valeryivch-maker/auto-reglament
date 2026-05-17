@@ -2,8 +2,8 @@ import json
 from datetime import datetime
 import flet as ft
 
-# Базовые данные приложения
-data = {
+# Данные по умолчанию (подгрузятся только при самом первом старте)
+DEFAULT_DATA = {
     "last_mileage": 195789,
     "last_mileage_date": "2026-01-16",
     "avg_daily_km": 15.0,
@@ -21,9 +21,19 @@ def main(page: ft.Page):
     page.scroll = ft.ScrollMode.AUTO
     page.padding = 20
 
-    # Текстовые метки
-    mileage_label = ft.Text(value=f"Текущий пробег: {data['last_mileage']} км", size=22, weight=ft.FontWeight.BOLD)
-    date_label = ft.Text(value=f"Обновлено: {data['last_mileage_date']}", size=14, color=ft.Colors.GREY_500)
+    # Безопасное чтение данных из внутренней памяти телефона (client_storage)
+    stored_raw = page.client_storage.get("car_service_key")
+    if stored_raw:
+        try:
+            data = json.loads(stored_raw)
+        except:
+            data = DEFAULT_DATA.copy()
+    else:
+        data = DEFAULT_DATA.copy()
+
+    # Создание элементов интерфейса
+    mileage_label = ft.Text(value="", size=22, weight=ft.FontWeight.BOLD)
+    date_label = ft.Text(value="", size=14, color=ft.Colors.GREY_500)
     
     input_mileage = ft.TextField(
         hint_text="Новый пробег", 
@@ -56,14 +66,15 @@ def main(page: ft.Page):
 
             days_to_show = int(remaining_days)
 
+            # Цветовая индикация согласно ТЗ
             if days_to_show <= 0:
-                bg_color = ft.Colors.RED_900
+                bg_color = ft.Colors.RED_900        # СРОЧНО
                 prefix = "[ СРОЧНО ] "
             elif days_to_show <= 14:
-                bg_color = ft.Colors.ORANGE_800
+                bg_color = ft.Colors.ORANGE_800    # ВНИМАНИЕ [ ! ]
                 prefix = "[ ! ] "
             else:
-                bg_color = ft.Colors.BLUE_950
+                bg_color = ft.Colors.BLUE_950      # Все в порядке [ OK ]
                 prefix = "[ OK ] "
 
             reminders_container.controls.add(
@@ -101,6 +112,9 @@ def main(page: ft.Page):
             data["last_mileage"] = new_val
             data["last_mileage_date"] = datetime.now().strftime("%Y-%m-%d")
             
+            # Сохраняем измененные данные напрямую в память телефона
+            page.client_storage.set("car_service_key", json.dumps(data))
+            
             input_mileage.value = ""
             update_ui()
 
@@ -120,5 +134,4 @@ def main(page: ft.Page):
     
     update_ui()
 
-# Запуск приложения в мобильном представлении
 ft.app(target=main)
